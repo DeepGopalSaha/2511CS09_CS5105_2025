@@ -256,7 +256,7 @@ def _generate_pdf_for_allocation_file(allocation_path: Path, photos_dir: str, co
 
                 last_box_bottom_on_page = y + cell_height
                 idx += 1
-                  page_index += 1
+                page_index += 1
 
     rows_needed = student_count
     if rows_needed > 0:

@@ -64,9 +64,6 @@ def _room_numeric_value(room_name: str) -> int:
             pass
     return 10 ** 9
 
-
-
-
 def process_master_excel(master_bio: IO, output_root: str, buffer: int = 0, filling_mode: str = "Dense"):
     out_dir = Path(output_root)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -157,7 +154,6 @@ def process_master_excel(master_bio: IO, output_root: str, buffer: int = 0, fill
         # apply buffer reduction after deciding present capacity
         remaining = max(0, present_capacity - buf_i)
 
-        
         block = str(r.get(block_col_name) or "").strip() if block_col_name else ""
         floor = _infer_floor(room_name)
         room_capacity[room_name] = remaining
@@ -358,6 +354,7 @@ def process_master_excel(master_bio: IO, output_root: str, buffer: int = 0, fill
                                 per_date_shift_fill_order[date_str_for_group][shift].append(rname)
 
                             per_date_output_map[date_str_for_group].setdefault(shift, {})
+                            per_date_output_map[date_str_for_group].setdefault(rname, {"subjects": {}, "rolls": []})
                             per_date_output_map[date_str_for_group][shift].setdefault(rname, {"subjects": {}, "rolls": []})
                             per_date_output_map[date_str_for_group][shift][rname]["subjects"].setdefault(subject, [])
                             per_date_output_map[date_str_for_group][shift][rname]["subjects"][subject].extend(chunk)
@@ -456,15 +453,16 @@ def process_master_excel(master_bio: IO, output_root: str, buffer: int = 0, fill
                             "Roll_list (semicolon separated_)": roll_list
                         })
 
-        for date_str in sorted(per_date_output_map.keys()):
+    # -------------------- Post-scan: per-date shift-wise seats left files --------------------
+    for date_str in sorted(per_date_output_map.keys()):
         date_folder = Path(out_dir) / date_str
         date_folder.mkdir(parents=True, exist_ok=True)
 
         # Gather allocation files for this date (exclude summary files)
         alloc_files = [p for p in sorted(date_folder.rglob("*.xlsx")) if not p.name.lower().startswith("op_")]
 
-        date_shift_room_map = {}  
-        shift_first_seen_rooms = {} 
+        date_shift_room_map = {}
+        shift_first_seen_rooms = {}
         for p in alloc_files:
             try:
                 df = pd.read_excel(p, engine="openpyxl")
@@ -536,7 +534,6 @@ def process_master_excel(master_bio: IO, output_root: str, buffer: int = 0, fill
                     if rn not in shift_first_seen_rooms[shift_val]:
                         shift_first_seen_rooms[shift_val].append(rn)
 
- 
         for shift_val in sorted(date_shift_room_map.keys()):
             # build ordered_rooms for this shift:
             fill_order = shift_first_seen_rooms.get(shift_val, [])
@@ -576,7 +573,6 @@ def process_master_excel(master_bio: IO, output_root: str, buffer: int = 0, fill
             except Exception:
                 LOG.exception("Failed to write datewise op_seats_left for %s %s", date_folder, shift_val)
 
-
     # -------------------- Build overall op_overall_seating_arrangement.xlsx --------------------
     try:
         overall_df = pd.DataFrame(overall_rows, columns=[
@@ -590,8 +586,6 @@ def process_master_excel(master_bio: IO, output_root: str, buffer: int = 0, fill
         LOG.info("Wrote overall seating arrangement (from mapping) to %s", overall_out_path)
     except Exception:
         LOG.exception("Failed to write op_overall_seating_arrangement.xlsx")
-
-
 
     LOG.info("Seating allocation completed; files written to %s", out_dir)
     return str(out_dir)
